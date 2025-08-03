@@ -11,3 +11,4 @@ uvicorn
 # Testing
 pytest
 langchain-community
+sentence-transformers

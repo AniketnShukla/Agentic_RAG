@@ -2,92 +2,110 @@ from langgraph.graph import StateGraph, END
 from src.schemas.state import AgentState
 from src.agents.retriever import Retriever
 from src.agents.generator import Generator
+from src.agents.rephraser import Rephraser
+from src.agents.evaluator import Evaluator
 
 class Orchestrator:
     """
     The orchestrator manages the overall workflow of the agentic RAG system.
     It defines the graph of agents and the transitions between them.
     """
-    def __init__(self, retriever: Retriever, generator: Generator):
+    def __init__(self, rephraser: Rephraser, retriever: Retriever, generator: Generator, evaluator: Evaluator):
+        self.rephraser = rephraser
         self.retriever = retriever
         self.generator = generator
+        self.evaluator = evaluator
         self.workflow = self._build_workflow()
 
+    def rephraser_node(self, state: AgentState) -> dict:
+        """Node that calls the Rephraser agent."""
+        print("---CALLING REPHRASER---")
+        query = state['original_query']
+        rephrased_queries = self.rephraser.rephrase(query)
+        return {"rephrased_queries": rephrased_queries}
+
     def retriever_node(self, state: AgentState) -> dict:
-        """
-        Node that calls the Retriever agent.
-        """
+        """Node that calls the Retriever agent."""
         print("---CALLING RETRIEVER---")
-        queries = [state['original_query']] # For now, we use the original query directly
+        queries = state['rephrased_queries']
         documents = self.retriever.retrieve(queries)
         return {"retrieved_documents": documents}
 
     def generator_node(self, state: AgentState) -> dict:
-        """
-        Node that calls the Generator agent.
-        """
+        """Node that calls the Generator agent."""
         print("---CALLING GENERATOR---")
         query = state['original_query']
         documents = state['retrieved_documents']
         generated_answer = self.generator.generate(query, documents)
-        return {"final_answer": generated_answer}
+        return {"generated_answer": generated_answer}
+
+    def evaluator_node(self, state: AgentState) -> dict:
+        """Node that calls the Evaluator agent."""
+        print("---CALLING EVALUATOR---")
+        query = state['original_query']
+        documents = state['retrieved_documents']
+        generated_answer = state['generated_answer']
+        is_faithful = self.evaluator.evaluate(query, documents, generated_answer)
+
+        final_answer = generated_answer if is_faithful else "I cannot provide a faithful answer based on the retrieved documents."
+        return {"final_answer": final_answer, "is_answer_faithful": is_faithful}
 
     def _build_workflow(self):
-        """
-        Builds the LangGraph workflow for the agentic RAG system.
-        """
+        """Builds the LangGraph workflow for the agentic RAG system."""
         workflow = StateGraph(AgentState)
 
-        # Add nodes for each agent
+        workflow.add_node("rephraser", self.rephraser_node)
         workflow.add_node("retriever", self.retriever_node)
         workflow.add_node("generator", self.generator_node)
+        workflow.add_node("evaluator", self.evaluator_node)
 
-        # Define the edges for the graph
-        workflow.set_entry_point("retriever")
+        workflow.set_entry_point("rephraser")
+        workflow.add_edge("rephraser", "retriever")
         workflow.add_edge("retriever", "generator")
-        workflow.add_edge("generator", END)
+        workflow.add_edge("generator", "evaluator")
+        workflow.add_edge("evaluator", END)
 
         return workflow.compile()
 
     def run(self, query: str):
-        """
-        Runs the agentic RAG system with the given query.
-        """
+        """Runs the agentic RAG system with the given query."""
         initial_state = {"original_query": query}
-        # The `stream` method returns an iterator of states. We'll get the final state.
         final_state = None
         for s in self.workflow.stream(initial_state):
-            # Print each step's output for debugging
             print(f"---STATE UPDATE---\n{s}\n---END STATE UPDATE---")
             final_state = s
         return final_state
 
 if __name__ == "__main__":
-    # This is for testing the orchestrator in isolation
     from src.tools.vector_store import get_vector_store, add_documents_to_store
     from src.tools.file_loader import load_documents
     import os
 
-    # Ingest documents
-    if not os.path.exists("./data/sample.txt"):
+    documents = load_documents("./data")
+    if not documents:
         if not os.path.exists("./data"):
             os.makedirs("./data")
         with open("./data/sample.txt", "w") as f:
             f.write("The capital of France is Paris.")
+        documents = load_documents("./data")
 
-    documents = load_documents("./data")
     vector_store = get_vector_store()
     if documents:
         add_documents_to_store(vector_store, documents)
 
     # Initialize agents
+    rephraser_agent = Rephraser()
     retriever_agent = Retriever(vector_store=vector_store)
-    generator_agent = Generator(model_name="openchat:latest")
+    generator_agent = Generator()
+    evaluator_agent = Evaluator()
 
-    # Initialize orchestrator
-    orchestrator = Orchestrator(retriever=retriever_agent, generator=generator_agent)
+    orchestrator = Orchestrator(
+        rephraser=rephraser_agent,
+        retriever=retriever_agent,
+        generator=generator_agent,
+        evaluator=evaluator_agent
+    )
 
-    # Run the orchestrator
     result = orchestrator.run("What is the capital of France?")
 
     print("\n---ORCHESTRATOR FINISHED---")

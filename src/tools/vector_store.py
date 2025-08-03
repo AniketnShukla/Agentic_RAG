@@ -1,62 +1,39 @@
 from langchain_community.vectorstores import Chroma
 import chromadb
-import subprocess
-import json
+from sentence_transformers import SentenceTransformer
 
-class OllamaSubprocessEmbeddings:
+class SentenceTransformerEmbeddings:
     """
-    A custom embedding class that uses the Ollama CLI via subprocess to generate embeddings.
-    This is to comply with the user's request and avoid direct HTTP requests from the sandbox.
+    A custom embedding class that uses the sentence-transformers library.
     """
-    def __init__(self, model: str = "openchat:latest"):
-        self.model = model
+    def __init__(self, model_name: str = 'all-MiniLM-L6-v2'):
+        # The model will be downloaded from the Hugging Face Hub the first time it's used.
+        try:
+            self.model = SentenceTransformer(model_name)
+        except Exception as e:
+            raise RuntimeError(f"Failed to load SentenceTransformer model '{model_name}'. Please ensure you have an internet connection and the model name is correct. Error: {e}")
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Embeds a list of documents."""
-        print(f"Embedding {len(texts)} documents using 'ollama embed'...")
-        embeddings = []
-        for text in texts:
-            command = ["ollama", "embed", "-m", self.model, text]
-            try:
-                result = subprocess.run(
-                    command,
-                    capture_output=True,
-                    text=True,
-                    check=True
-                )
-                embedding_data = json.loads(result.stdout)
-                embeddings.append(embedding_data['embedding'])
-            except (subprocess.CalledProcessError, FileNotFoundError, json.JSONDecodeError) as e:
-                print(f"Error getting embedding for document: {e}")
-                pass
+        print(f"Embedding {len(texts)} documents with sentence-transformer model...")
+        embeddings = self.model.encode(texts, convert_to_tensor=False).tolist()
         return embeddings
 
     def embed_query(self, text: str) -> list[float]:
         """Embeds a single query."""
-        print(f"Embedding query using 'ollama embed'...")
-        command = ["ollama", "embed", "-m", self.model, text]
-        try:
-            result = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            embedding_data = json.loads(result.stdout)
-            return embedding_data['embedding']
-        except (subprocess.CalledProcessError, FileNotFoundError, json.JSONDecodeError) as e:
-            print(f"Error getting embedding for query: {e}")
-            return []
+        print(f"Embedding query with sentence-transformer model...")
+        embedding = self.model.encode(text, convert_to_tensor=False).tolist()
+        return embedding
 
 def get_vector_store(collection_name: str = "rag_agentic_system", persist_directory: str = "./chroma_db"):
     """
-    Initializes and returns a Chroma vector store using our custom Ollama subprocess embeddings.
+    Initializes and returns a Chroma vector store using sentence-transformers.
     """
-    print(f"Initializing vector store with Ollama subprocess embeddings...")
+    print(f"Initializing vector store with sentence-transformers embeddings...")
 
     client = chromadb.PersistentClient(path=persist_directory)
 
-    embeddings = OllamaSubprocessEmbeddings(model="openchat:latest")
+    embeddings = SentenceTransformerEmbeddings(model_name='all-MiniLM-L6-v2')
 
     vector_store = Chroma(
         collection_name=collection_name,
@@ -88,7 +65,7 @@ if __name__ == '__main__':
         if not os.path.exists("./data"):
             os.makedirs("./data")
         with open("./data/sample.txt", "w") as f:
-            f.write("This is a test document about vector stores using Ollama subprocess.")
+            f.write("This is a test document about vector stores using sentence-transformers.")
 
     documents = load_documents("./data")
 
