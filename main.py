@@ -26,7 +26,7 @@ def setup_and_run(query: str, data_path: str = "./data"):
     print("\n--- 3. AGENT AND ORCHESTRATOR INITIALIZATION ---")
     retriever_agent = Retriever(vector_store=vector_store)
     # The generator is initialized with the template model
-    generator_agent = Generator(model_name="    ")
+    generator_agent = Generator(model_name="template")
     orchestrator = Orchestrator(retriever=retriever_agent, generator=generator_agent)
 
     print("\n--- 4. RUNNING THE AGENTIC RAG WORKFLOW ---")
