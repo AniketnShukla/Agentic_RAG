@@ -5,7 +5,7 @@ from src.tools.file_loader import load_documents
 from src.tools.vector_store import get_vector_store, add_documents_to_store
 import os
 
-def setup_and_run(query: str):
+def setup_and_run(query: str, data_path: str = "./data"):
     """
     Sets up the RAG system, ingests data, and runs the query using Ollama.
     """
@@ -14,9 +14,9 @@ def setup_and_run(query: str):
     print("Using local Ollama setup.")
 
     print("\n--- 2. DOCUMENT INGESTION ---")
-    documents = load_documents("./data")
+    documents = load_documents(data_path)
     if not documents:
-        print("No documents found in the './data' directory. Please add some .txt files and try again.")
+        print(f"No documents found in the '{data_path}' directory. Please add some .txt or .pdf files and try again.")
         return
 
     vector_store = get_vector_store()
@@ -25,8 +25,8 @@ def setup_and_run(query: str):
 
     print("\n--- 3. AGENT AND ORCHESTRATOR INITIALIZATION ---")
     retriever_agent = Retriever(vector_store=vector_store)
-    # The generator is initialized with the model name for Ollama
-    generator_agent = Generator(model_name="openchat:latest")
+    # The generator is initialized with the template model
+    generator_agent = Generator(model_name="    ")
     orchestrator = Orchestrator(retriever=retriever_agent, generator=generator_agent)
 
     print("\n--- 4. RUNNING THE AGENTIC RAG WORKFLOW ---")
@@ -42,17 +42,22 @@ def setup_and_run(query: str):
 
 
 if __name__ == "__main__":
-    # Ensure the data directory and a sample file exist
-    if not os.path.exists("./data"):
-        os.makedirs("./data")
-    if not os.path.exists("./data/sample.txt"):
-        with open("./data/sample.txt", "w") as f:
-            f.write("The capital of France is Paris. The Eiffel Tower is a famous landmark in Paris. The currency of Japan is the Yen.")
+    # Use the psychology PDF file path
+    psychology_pdf_path = r"C:\Users\anike\OneDrive\Documents\ebooks"
+    
+    # Check if the PDF file exists
+    pdf_file = os.path.join(psychology_pdf_path, "Psychology-A-Self-Teaching-Guide-English.pdf")
+    if not os.path.exists(pdf_file):
+        print(f"PDF file not found at: {pdf_file}")
+        print("Please check the file path and try again.")
+        exit(1)
+    
+    print(f"Using psychology PDF file: {pdf_file}")
 
     # Get user input
-    user_query = input("Please enter your query: ")
+    user_query = input("Please enter your query about psychology: ")
 
     if user_query and user_query.strip():
-        setup_and_run(user_query)
+        setup_and_run(user_query, psychology_pdf_path)
     else:
         print("No query entered. Exiting.")

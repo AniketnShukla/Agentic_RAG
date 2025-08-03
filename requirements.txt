@@ -8,6 +8,13 @@ python-dotenv
 fastapi
 uvicorn
 
+# Document Processing
+PyPDF2
+pypdf
+
+# Embeddings
+sentence-transformers
+
 # Testing
 pytest
 langchain-community

@@ -1,62 +1,20 @@
 from langchain_community.vectorstores import Chroma
+from langchain_community.embeddings import HuggingFaceEmbeddings
 import chromadb
-import subprocess
-import json
-
-class OllamaSubprocessEmbeddings:
-    """
-    A custom embedding class that uses the Ollama CLI via subprocess to generate embeddings.
-    This is to comply with the user's request and avoid direct HTTP requests from the sandbox.
-    """
-    def __init__(self, model: str = "openchat:latest"):
-        self.model = model
-
-    def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        """Embeds a list of documents."""
-        print(f"Embedding {len(texts)} documents using 'ollama embed'...")
-        embeddings = []
-        for text in texts:
-            command = ["ollama", "embed", "-m", self.model, text]
-            try:
-                result = subprocess.run(
-                    command,
-                    capture_output=True,
-                    text=True,
-                    check=True
-                )
-                embedding_data = json.loads(result.stdout)
-                embeddings.append(embedding_data['embedding'])
-            except (subprocess.CalledProcessError, FileNotFoundError, json.JSONDecodeError) as e:
-                print(f"Error getting embedding for document: {e}")
-                pass
-        return embeddings
-
-    def embed_query(self, text: str) -> list[float]:
-        """Embeds a single query."""
-        print(f"Embedding query using 'ollama embed'...")
-        command = ["ollama", "embed", "-m", self.model, text]
-        try:
-            result = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            embedding_data = json.loads(result.stdout)
-            return embedding_data['embedding']
-        except (subprocess.CalledProcessError, FileNotFoundError, json.JSONDecodeError) as e:
-            print(f"Error getting embedding for query: {e}")
-            return []
 
 def get_vector_store(collection_name: str = "rag_agentic_system", persist_directory: str = "./chroma_db"):
     """
-    Initializes and returns a Chroma vector store using our custom Ollama subprocess embeddings.
+    Initializes and returns a Chroma vector store using HuggingFace embeddings.
     """
-    print(f"Initializing vector store with Ollama subprocess embeddings...")
+    print(f"Initializing vector store with HuggingFace embeddings...")
 
     client = chromadb.PersistentClient(path=persist_directory)
 
-    embeddings = OllamaSubprocessEmbeddings(model="openchat:latest")
+    # Use a lightweight embedding model that works well for RAG
+    embeddings = HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2",
+        model_kwargs={'device': 'cpu'}
+    )
 
     vector_store = Chroma(
         collection_name=collection_name,
@@ -88,7 +46,7 @@ if __name__ == '__main__':
         if not os.path.exists("./data"):
             os.makedirs("./data")
         with open("./data/sample.txt", "w") as f:
-            f.write("This is a test document about vector stores using Ollama subprocess.")
+            f.write("This is a test document about vector stores using HuggingFace embeddings.")
 
     documents = load_documents("./data")
 

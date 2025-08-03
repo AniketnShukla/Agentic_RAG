@@ -1,13 +1,23 @@
-from langchain_community.document_loaders import DirectoryLoader, TextLoader
+from langchain_community.document_loaders import DirectoryLoader, TextLoader, PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 def load_documents(directory_path: str = "./data"):
     """
     Loads documents from the specified directory, splits them into chunks, and returns them.
+    Supports both .txt and .pdf files.
     """
     print(f"Loading documents from {directory_path}...")
-    loader = DirectoryLoader(directory_path, glob="**/*.txt", loader_cls=TextLoader)
-    documents = loader.load()
+    
+    # Load text files
+    text_loader = DirectoryLoader(directory_path, glob="**/*.txt", loader_cls=TextLoader)
+    text_documents = text_loader.load()
+    
+    # Load PDF files
+    pdf_loader = DirectoryLoader(directory_path, glob="**/*.pdf", loader_cls=PyPDFLoader)
+    pdf_documents = pdf_loader.load()
+    
+    # Combine all documents
+    documents = text_documents + pdf_documents
 
     if not documents:
         print("No documents found.")
@@ -17,6 +27,7 @@ def load_documents(directory_path: str = "./data"):
     chunked_documents = text_splitter.split_documents(documents)
 
     print(f"Loaded and split {len(documents)} documents into {len(chunked_documents)} chunks.")
+    print(f"Text files: {len(text_documents)}, PDF files: {len(pdf_documents)}")
 
     return chunked_documents
 
