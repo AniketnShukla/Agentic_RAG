@@ -1,7 +1,6 @@
 # Core Frameworks
 langchain
 langgraph
-langchain_openai
 chromadb
 
 # Utilities
@@ -11,3 +10,4 @@ uvicorn
 
 # Testing
 pytest
+langchain-community

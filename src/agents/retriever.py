@@ -5,30 +5,26 @@ class Retriever:
     def __init__(self, vector_store):
         self.vector_store = vector_store
 
-    def retrieve(self, queries: list[str]) -> list[str]:
+    def retrieve(self, queries: list[str], k: int = 2) -> list[str]:
         """
         Retrieves documents for the given queries.
 
         Args:
             queries: A list of queries to search for.
+            k: The number of documents to retrieve for each query.
 
         Returns:
-            A list of retrieved document contents.
+            A list of unique retrieved document contents.
         """
-        # TODO: Implement the logic to retrieve documents from the vector store.
-        # This will involve embedding the queries and searching the vector store.
         print(f"Retrieving documents for queries: {queries}")
 
-        # For now, we'll just return some dummy documents.
-        dummy_docs = [
-            "Paris is the capital of France.",
-            "The Eiffel Tower is a famous landmark in Paris.",
-        ]
+        retrieved_docs = []
+        for query in queries:
+            retrieved_docs.extend(self.vector_store.similarity_search(query, k=k))
 
-        # In a real implementation, you would do something like this:
-        # retrieved_docs = []
-        # for query in queries:
-        #     retrieved_docs.extend(self.vector_store.similarity_search(query, k=2))
-        # return [doc.page_content for doc in retrieved_docs]
+        # Get unique documents by their content
+        unique_docs_by_content = {doc.page_content for doc in retrieved_docs}
 
-        return dummy_docs
+        print(f"Retrieved {len(unique_docs_by_content)} unique documents.")
+
+        return list(unique_docs_by_content)
