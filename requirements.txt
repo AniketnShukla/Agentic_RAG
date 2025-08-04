@@ -1,0 +1,14 @@
+# Core Frameworks
+langchain
+langgraph
+chromadb
+
+# Utilities
+python-dotenv
+fastapi
+uvicorn
+
+# Testing
+pytest
+langchain-community
+sentence-transformers

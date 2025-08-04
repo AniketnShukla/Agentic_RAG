@@ -1,0 +1,15 @@
+Welcome to your agentic RAG system knowledge base.
+
+This is the first document. The system is designed to be modular, with different agents handling different tasks.
+The Retriever agent is responsible for fetching relevant information from this knowledge base.
+The Generator agent then uses this information to construct an answer.
+
+Let's add some specific facts.
+The capital of France is Paris.
+The 2024 Summer Olympics were held in Paris.
+The currency of Japan is the Yen.
+The highest mountain in the world is Mount Everest.
+
+This system uses LangChain for its core components and LangGraph for orchestrating the agents.
+ChromaDB is used as the vector store for efficient similarity searches.
+The entire application is containerized using Docker for portability.
