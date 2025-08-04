@@ -41,9 +41,13 @@ def setup_and_run(query: str):
     result_state = orchestrator.run(query)
 
     print("\n--- 5. WORKFLOW FINISHED ---")
-    if result_state and 'final_answer' in result_state:
+    # The final state is nested under the last node that ran
+    final_node_state = result_state.get('evaluator', {})
+    final_answer = final_node_state.get('final_answer')
+
+    if final_answer:
         print("\nFinal Answer:")
-        print(result_state['final_answer'])
+        print(final_answer)
     else:
         print("\nCould not retrieve a final answer.")
         print("Final state:", result_state)
