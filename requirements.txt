@@ -18,3 +18,4 @@ sentence-transformers
 # Testing
 pytest
 langchain-community
+sentence-transformers

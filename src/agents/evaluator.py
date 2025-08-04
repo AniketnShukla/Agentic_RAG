@@ -1,14 +1,17 @@
+import subprocess
+import shlex
+
 class Evaluator:
     """
     This agent evaluates the generated answer for faithfulness to the retrieved documents.
-    It helps to prevent hallucinations.
+    It uses a local Ollama model via subprocess.
     """
-    def __init__(self, model):
-        self.model = model
+    def __init__(self, model_name: str = "openchat:latest"):
+        self.model_name = model_name
 
     def evaluate(self, query: str, documents: list[str], generated_answer: str) -> bool:
         """
-        Evaluates the generated answer.
+        Evaluates the generated answer for faithfulness.
 
         Args:
             query: The user's original query.
@@ -18,14 +21,45 @@ class Evaluator:
         Returns:
             True if the answer is faithful to the documents, False otherwise.
         """
-        # TODO: Implement the logic to evaluate the answer using an LLM.
-        # This can be a separate LLM call that asks the model to check for faithfulness.
-        print("Evaluating the generated answer...")
+        print("Evaluating the generated answer for faithfulness...")
 
-        # In a real implementation, you might use a prompt like this:
-        # context = "\n\n".join(documents)
-        # prompt = f"Please evaluate if the following answer is fully supported by the provided context. Respond with only 'yes' or 'no'.\n\nContext:\n{context}\n\nAnswer:\n{generated_answer}"
-        # response = self.model.invoke(prompt)
-        # return "yes" in response.content.lower()
+        context = "\n\n".join(documents)
 
-        return True # Placeholder
+        prompt_template = (
+            "You are a strict evaluator. Your task is to determine if the provided 'Answer' is fully supported by the 'Context'. "
+            "The answer must not contain any information that is not present in the context. "
+            "Respond with only the word 'yes' or 'no'.\n\n"
+            "Context:\n"
+            "---CONTEXT---\n"
+            "{context}\n"
+            "---END CONTEXT---\n\n"
+            "Answer:\n"
+            "---ANSWER---\n"
+            "{answer}\n"
+            "---END ANSWER---\n\n"
+            "Is the answer fully supported by the context? (yes/no):"
+        )
+
+        prompt = prompt_template.format(context=context, answer=generated_answer)
+
+        command = ["ollama", "run", self.model_name, prompt]
+
+        try:
+            print("---CALLING OLLAMA FOR EVALUATION VIA SUBPROCESS---")
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                check=True
+            )
+
+            response_text = result.stdout.strip().lower()
+            print(f"---OLLAMA RESPONSE---\n{response_text}\n---END OLLAMA RESPONSE---")
+
+            return "yes" in response_text
+
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            print(f"Error evaluating answer: {e}. Defaulting to faithful (True).")
+            # Default to True to avoid stopping the pipeline due to an evaluation error.
+            # In a production system, this might require more sophisticated error handling.
+            return True

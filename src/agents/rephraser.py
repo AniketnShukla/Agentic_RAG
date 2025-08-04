@@ -1,30 +1,56 @@
+import subprocess
+import shlex
+
 class Rephraser:
     """
-    This agent rephrases the user's query to improve retrieval results.
-    It can generate multiple variations of the query to capture different aspects of the user's intent.
+    This agent rephrases the user's query to improve retrieval results by generating multiple variations.
+    It uses a local Ollama model via subprocess.
     """
-    def __init__(self, model):
-        self.model = model
+    def __init__(self, model_name: str = "openchat:latest"):
+        self.model_name = model_name
 
     def rephrase(self, query: str) -> list[str]:
         """
-        Rephrases the given query.
+        Rephrases the given query into multiple variations.
 
         Args:
             query: The user's original query.
 
         Returns:
-            A list of rephrased queries.
+            A list of rephrased queries, including the original.
         """
-        # TODO: Implement the logic to rephrase the query using the LLM.
-        # For now, we'll just return the original query.
-        print(f"Rephrasing query: '{query}'")
+        print(f"Rephrasing query: '{query}' using model {self.model_name}")
 
-        # In a real implementation, you might use a prompt like this:
-        # prompt = f"Generate 3 different versions of the following user query for a search engine. The queries should be varied to cover different angles of the topic. The original query is: '{query}'"
-        # response = self.model.invoke(prompt)
-        # rephrased_queries = response.content.split('\n')
+        prompt_template = (
+            "You are a helpful assistant. Your task is to generate 3 different versions of the following user query for a search engine. "
+            "The queries should be varied to cover different angles of the topic. "
+            "Return *only* the rephrased queries, each on a new line, without any numbering or introduction.\n\n"
+            "Original Query: '{query}'"
+        )
 
-        rephrased_queries = [query] # Placeholder
+        prompt = prompt_template.format(query=query)
 
-        return rephrased_queries
+        command = ["ollama", "run", self.model_name, prompt]
+
+        try:
+            print("---CALLING OLLAMA FOR REPHRASING VIA SUBPROCESS---")
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                check=True
+            )
+
+            rephrased_queries = result.stdout.strip().split('\n')
+            # Clean up any empty lines
+            rephrased_queries = [q.strip() for q in rephrased_queries if q.strip()]
+
+            print(f"---OLLAMA RESPONSE---\n{rephrased_queries}\n---END OLLAMA RESPONSE---")
+
+            # Always include the original query as well
+            all_queries = [query] + rephrased_queries
+            return list(set(all_queries)) # Use set to ensure uniqueness
+
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            print(f"Error rephrasing query: {e}. Falling back to original query.")
+            return [query]
