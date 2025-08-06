@@ -31,6 +31,9 @@ class Retriever:
             A list of unique retrieved document contents.
         """
         print(f"Retrieving documents for queries: {queries}")
+        print(f"USE_GITHUB_CONTEXT: {USE_GITHUB_CONTEXT}")
+        print(f"github_adapter: {self.github_adapter is not None}")
+        print(f"github_repo_url: {github_repo_url}")
 
         # 1. Retrieve from vector store
         retrieved_docs = []
